@@ -1,0 +1,511 @@
+---
+title: "THannigan-PH125.9x-Capstone-Penguins"
+author: "Tom Hannigan"
+date: "1/7/2021"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+
+HarvardX PH125.9x
+Data Science: Capstone
+Penguins Project
+
+Tom Hannigan
+January 7, 2021
+
+
+Introduction
+
+This is the second of two capstone projects for completion of the ninth and final course in HarvardX's multi-part Data Science Professional Certificate series.  The scope of this project is to utilize various physical measurements of penguins as a way to correctly identify their species. The data is provided from the “palmerpenguins” package.  The accuracy of the predict function will be our metric for this project.
+
+The goal of the project is to generate and train a machine learning algorithm using physical measurements identified in the “data_train” partition to predict species in the “data_test” dataset.  When the machine learning is evaluated on the “data_test” partition, the goal is to generate an Accuracy > 98% on the overall accuracy from the predict function.  The calculation to obtain the accuracy is:
+
+confusionMatrix(predict(fit_model, data_test), data_test$species) $overall["Accuracy"]
+
+
+The steps performed for the project were:
+
+•	Download the dataset and review
+•	Scrub and simplify the dataset
+•	Partition the dataset
+•	Visually evaluate the data
+•	Identify and model various fit models
+•	Determine and compare the accuracies on the “data_test” partition.
+•	Determine and report the optimal method and accuracy
+
+
+Methods/Analysis
+
+The data was pulled from the penguins data set.  A summary for review was generated with the following code:
+
+----- CODE ----
+
+install.packages("palmerpenguins")
+library(palmerpenguins)
+data(package = 'palmerpenguins')
+summary(penguins)
+
+----- RESULT ----
+
+ 
+
+In reviewing the summary it is identified that there are several items that need to be addressed with the dataset.  These are the tasks that are performed on the data to make it simplified for this project
+
+•	Remove the entries that include an NA in any of the variable columns
+•	Remove columns that are not pertinent to the project to simplify the dataset
+•	Rename some columns for better presentation
+•	Confirm the results
+
+----- CODE ----
+
+wpenguins <- penguins[!is.na(penguins$bill_length_mm) | !is.na(penguins$bill_depth_mm) | !is.na(penguins$flipper_length_mm) | !is.na(penguins$body_mass_g),]
+simplep <- wpenguins %>% select(length=bill_length_mm, depth=bill_depth_mm, flipper=flipper_length_mm, body=body_mass_g, species)
+summary(!is.na(simplep))
+head(simplep) 
+----- RESULT ----
+
+ 
+
+The remaining dataset needs to be partitioned to set up a training dataset and a test dataset.  It will be split at a 20% partition.  The following code was used to accomplish that:
+
+----- CODE ----
+
+set.seed(68, sample.kind="Rounding") 
+trainIndex <- createDataPartition(simplep$species, p=0.8, list=FALSE)
+data_train <- simplep[trainIndex,]
+data_test <- simplep[-trainIndex,]
+
+----- RESULT ----
+
+ 
+
+
+
+
+Now we will visually evaluate the train data.  The first plot is a box plot of each of the predictors.  In looking at it, this shows that we have variation in each of the predictors, but really doesn’t give us a lot of insight related to the species:
+
+ 
+----- CODE ----
+
+x <- data_train[, 1:4]
+y <- factor(data_train[,5])
+
+par(mfrow=c(1,4))
+for(i in 1:4) {
+  boxplot(x[,i], main=names(x)[i])
+}
+
+
+
+
+
+
+The next plot to generate is a density plot of the predictors.  In looking at the plot, you can see areas where the values for predictor are skewed for one or more species in relation to the other species.  For example, there is almost no overlap between Adelie and Gentoo species for the flipper length.
+
+ 
+
+
+----- CODE ----
+
+x <- data_train[, 1:4]
+y <- factor(data_train[,5])
+
+scales <- list(x=list(relation="free"), y=list(relation="free"))
+featurePlot(x=x, y=y, plot="density", scales=scales, auto.key = list(columns = 3))
+
+
+
+
+
+
+The final plot to evaluate is a scatter plot matrix.  It is very clear that there are several data combinations that would be good indicators.  A prime example is the clear distinction between the bill depth and the body weight for Gentoo species versus the other two.  However, it would be completely ineffective to distinguish between the Adelie and Chinstrap species.  Although not as definitive as the depth\body is for the Gentoo, the bill length and bill depth interaction between Adelie and Chinstrap shows a potential to distinguish between those two species.
+
+ 
+
+----- CODE ----
+
+x <- data_train[, 1:4]
+y <- factor(data_train[,5])
+
+featurePlot(x, y, plot = "ellipse", auto.key = list(columns = 3))
+
+The next step will be to generate several fit models (utilizing different methods in r) and evaluate their performance.  First will be the classification and regression trees or CART model.   This is generated with the code/formulas below:
+
+----- CODE ----
+
+set.seed(68, sample.kind="Rounding") 
+cart_fit <- train(species~., data=data_train, method="rpart")
+
+----- RESULT ----
+
+ 
+ 
+The next one will be Random Forest.  This is intended to improve prediction performance and reduce instability by averaging multiple decision trees.  This is generated with the code/formulas below:
+
+----- CODE ----
+
+set.seed(68, sample.kind="Rounding")
+rf_fit <- randomForest(species ~ ., data=data_train)
+
+----- RESULT ----
+
+ 
+ 
+
+
+The next one will be linear discriminant analysis or LDA model.  This is designed to find a linear combination of predictors that separates the class objects, in this case the species.  This is generated with the code/formulas below:
+
+----- CODE ----
+
+set.seed(68, sample.kind="Rounding")
+lda_fit <- train(species~., data=data_train, method="lda")
+
+----- RESULT ----
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+The next one is the quadratic discriminant analysis or QDA model.  This similar to LDA and is a version of Naïve Bayes where the distributions are assumed multivariate normal.  This is generated with the code/formulas below:
+
+----- CODE ----
+
+set.seed(68, sample.kind="Rounding")
+qda_fit <- train(species~., data=data_train, method="qda")
+
+----- RESULT ----
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+The last one we will be evaluating is the support vector machine or SVM model.  This tries to determine the hyper-plane to separate the classes in multiple dimensions.  We will do two kernel variations, “radial” and “polynomial” for the SVM model.  These are generated with the code/formulas below:
+
+----- CODE ----
+
+# With radial kernel
+set.seed(68, sample.kind="Rounding")
+svm_fit_r <- svm(species~., data=data_train, kernel='radial')
+
+----- RESULT ----
+
+ 
+
+----- CODE ----
+
+# With polynomial kernel
+set.seed(68, sample.kind="Rounding")
+svm_fit_p <- svm(species~., data=data_train, kernel='polynomial')
+
+----- RESULT ----
+
+ 
+
+Results
+
+We will now take all of the various trained models; CART, RF, LDA, QDA, SVM_R and SVM_P and predict them against the test dataset.  Recall that our goal is an accuracy > 98%.  These are generated with the code/formulas below:
+
+----- CODE ----
+
+cart_acc <- confusionMatrix(predict(cart_fit, data_test), data_test$species)$overall["Accuracy"]
+rf_acc <- confusionMatrix(predict(rf_fit, data_test), data_test$species)$overall["Accuracy"]
+lda_acc <- confusionMatrix(predict(lda_fit, data_test), data_test$species)$overall["Accuracy"]
+qda_acc <- confusionMatrix(predict(qda_fit, data_test), data_test$species)$overall["Accuracy"]
+svm_acc_r <- confusionMatrix(predict(svm_fit_r, data_test), data_test$species)$overall["Accuracy"]
+svm_acc_p <- confusionMatrix(predict(svm_fit_p, data_test), data_test$species)$overall["Accuracy"]
+
+----- RESULT ----
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+Conclusion
+
+We were able to exceed the project goal of an accuracy > 98% utilizing the LDA fit model.  Its predicted accuracy on the test dataset was 98.51%.  This is graphed below:
+
+ 
+----- CODE ----
+
+acc_results %>% ggplot(aes(method,accuracy)) + 
+  geom_col(color = "black", fill = "gold") +
+  geom_text(aes(label = format(accuracy, digits = 7)), nudge_y = 0.005) +
+  coord_cartesian(ylim=c(0.9, 1.0)) +
+  geom_abline(slope=0, intercept=0.98,  col = "red",lty=2) +
+  ggtitle("Accuracy by Method") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+
+This met the stated goal, but there is opportunity to improve the results.  The analysis was only performed on the variables as predictors for the species.  There were other attribute data columns such as island and sex that were not factored into the evaluation.
+
+
+A limitation of this project was the length and width of the dataset.  There were only 4 variables evaluated for 342 penguins.  There are many more measurements that could be done on the penguins, such as height, foot length, etc.  That additional data could be utilized to further improve the models.  Additionally, you would expect that modeling off of a larger dataset would be expected to improve the accuracy.    
+
+In order to continue the project and strive towards 100 percent accuracy, we would want to expand the analysis to include many other factors, both variable and attribute.  Additionally, the dataset included several NA values.  This could indicate difficulty in obtaining these measurements.  It would be ideal to investigate details and measurements that could be obtained remotely with the use of technology.  Activities such as facial and marking recognition, laser measurements, such as for height, obtained from a distance or photograph, radar/laser evaluations of speed, etc., could be the next step in improving the accuracy and feasibility of predicting a large waddle of penguins.  
+
+
+Citations:
+
+HarvardX PH125.9x Capstone Course: https://www.edx.org/professional-certificate/harvardx-data-science
+Textbook:  “Introduction to Data Science”, by Rafael A. Irizarry: https://rafalab.github.io/dsbook/
+palmerpenguins:
+#>   Horst AM, Hill AP, Gorman KB (2020). palmerpenguins: Palmer
+#>   Archipelago (Antarctica) penguin data. R package version 0.1.0.
+#>   https://allisonhorst.github.io/palmerpenguins/. doi:
+#>   10.5281/zenodo.3960218.
+
+
+
+# Install packages and libraries
+
+install.packages("palmerpenguins")
+install.packages("ellipse")
+install.packages("lsr")
+install.packages("explore")
+
+library(tidyverse)
+library(caret)
+library(data.table)
+library(stringr)
+library(lsr)
+library(randomForest)
+library(palmerpenguins)
+library(explore)
+library(dplyr)
+library(purrr)
+library(rpart)
+library(e1071)
+
+# Get data
+
+data(package = 'palmerpenguins')
+
+#review data
+
+summary(penguins)
+
+# There are some NA's in the data.
+
+# Remove entries that include an NA in any of the variable columns
+# Remove columns that are not pertinent to simplify dataset
+
+wpenguins <- penguins[!is.na(penguins$bill_length_mm) | !is.na(penguins$bill_depth_mm) | !is.na(penguins$flipper_length_mm) | !is.na(penguins$body_mass_g),]
+simplep <- wpenguins %>% select(length=bill_length_mm, depth=bill_depth_mm, flipper=flipper_length_mm, body=body_mass_g, species)
+
+# Confirm all NA's for variables are removed
+
+summary(!is.na(simplep))
+head(simplep)
+
+# Create training and test set at 20% partition.
+
+set.seed(68, sample.kind="Rounding") 
+trainIndex <- createDataPartition(simplep$species, p=0.8, list=FALSE)
+data_train <- simplep[trainIndex,]
+data_test <- simplep[-trainIndex,]
+
+summary(data_train)
+summary(data_test)
+
+# Graph relationships in training data
+
+x <- data_train[, 1:4]
+y <- factor(data_train[,5])
+
+par(mfrow=c(1,4))
+for(i in 1:4) {
+  boxplot(x[,i], main=names(x)[i])
+}
+
+scales <- list(x=list(relation="free"), y=list(relation="free"))
+featurePlot(x=x, y=y, plot="density", scales=scales, auto.key = list(columns = 3))
+
+
+featurePlot(x, y, plot = "ellipse", auto.key = list(columns = 3))
+
+#Generate several fit models to estimate accuracy
+
+# CART
+
+set.seed(68, sample.kind="Rounding") 
+cart_fit <- train(species~., data=data_train, method="rpart")
+cart_fit
+
+cart_model <- rpart(species~.,data = data_train)
+plot(cart_model, compress = TRUE, branch = 1)
+text(cart_model, digits = 3)
+
+cart_acc <- confusionMatrix(predict(cart_fit, data_test), data_test$species)$overall["Accuracy"]
+cart_acc
+
+# Random Forest
+
+set.seed(68, sample.kind="Rounding")
+rf_fit <- randomForest(species ~ ., data=data_train)
+rf_fit
+
+plot(rf_fit)
+
+rf_acc <- confusionMatrix(predict(rf_fit, data_test), data_test$species)$overall["Accuracy"]
+rf_acc
+
+# LDA
+
+set.seed(68, sample.kind="Rounding")
+lda_fit <- train(species~., data=data_train, method="lda")
+lda_fit
+
+lda_acc <- confusionMatrix(predict(lda_fit, data_test), data_test$species)$overall["Accuracy"]
+lda_acc
+
+# QDA
+
+set.seed(68, sample.kind="Rounding")
+qda_fit <- train(species~., data=data_train, method="qda")
+qda_fit
+
+qda_acc <- confusionMatrix(predict(qda_fit, data_test), data_test$species)$overall["Accuracy"]
+qda_acc
+
+# SVM
+
+# With radial kernel
+set.seed(68, sample.kind="Rounding")
+svm_fit_r <- svm(species~., data=data_train, kernel='radial')
+svm_fit_r
+
+svm_acc_r <- confusionMatrix(predict(svm_fit_r, data_test), data_test$species)$overall["Accuracy"]
+svm_acc_r
+
+# With polynomial kernel
+set.seed(68, sample.kind="Rounding")
+svm_fit_p <- svm(species~., data=data_train, kernel='polynomial')
+svm_fit_p
+
+svm_acc_p <- confusionMatrix(predict(svm_fit_p, data_test), data_test$species)$overall["Accuracy"]
+svm_acc_p
+
+
+# summarize accuracy of models
+
+acc_results <- tibble(method = c("CART", "RF", "LDA", "QDA", "SVM_R", "SVM_P"), accuracy = c(cart_acc, rf_acc, lda_acc, qda_acc, svm_acc_r, svm_acc_p))
+
+acc_results %>% knitr::kable()
+
+acc_results %>% ggplot(aes(method,accuracy)) + 
+  geom_col(color = "black", fill = "gold") +
+  geom_text(aes(label = format(accuracy, digits = 7)), nudge_y = 0.005) +
+  coord_cartesian(ylim=c(0.9, 1.0)) +
+  geom_abline(slope=0, intercept=0.98,  col = "red",lty=2) +
+  ggtitle("Accuracy by Method") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+
+
+# Citations
+
+#HarvardX PH125.9x Capstone Course: https://www.edx.org/professional-certificate/harvardx-data-science
+
+#Textbook:  “Introduction to Data Science”, by Rafael A. Irizarry: https://rafalab.github.io/dsbook/
+
+citation("palmerpenguins")
+#> 
+#> To cite palmerpenguins in publications use:
+#> 
+#>   Horst AM, Hill AP, Gorman KB (2020). palmerpenguins: Palmer
+#>   Archipelago (Antarctica) penguin data. R package version 0.1.0.
+#>   https://allisonhorst.github.io/palmerpenguins/. doi:
+#>   10.5281/zenodo.3960218.
+#> 
+#> A BibTeX entry for LaTeX users is
+#> 
+#>   @Manual{,
+#>     title = {palmerpenguins: Palmer Archipelago (Antarctica) penguin data},
+#>     author = {Allison Marie Horst and Alison Presmanes Hill and Kristen B Gorman},
+#>     year = {2020},
+#>     note = {R package version 0.1.0},
+#>     doi = {10.5281/zenodo.3960218},
+#>     url = {https://allisonhorst.github.io/palmerpenguins/},
+#>   }
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+
+x <- data_train[, 1:4]
+y <- factor(data_train[,5])
+
+par(mfrow=c(1,4))
+for(i in 1:4) {
+  boxplot(x[,i], main=names(x)[i])
+}
+
+scales <- list(x=list(relation="free"), y=list(relation="free"))
+featurePlot(x=x, y=y, plot="density", scales=scales, auto.key = list(columns = 3))
+
+
+featurePlot(x, y, plot = "ellipse", auto.key = list(columns = 3))
+
+cart_model <- rpart(species~.,data = data_train)
+plot(cart_model, compress = TRUE, branch = 1)
+text(cart_model, digits = 3)
+
+plot(rf_fit)
+
+acc_results %>% ggplot(aes(method,accuracy)) + 
+  geom_col(color = "black", fill = "gold") +
+  geom_text(aes(label = format(accuracy, digits = 7)), nudge_y = 0.005) +
+  coord_cartesian(ylim=c(0.9, 1.0)) +
+  geom_abline(slope=0, intercept=0.98,  col = "red",lty=2) +
+  ggtitle("Accuracy by Method") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
